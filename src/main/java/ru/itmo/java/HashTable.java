@@ -1,23 +1,133 @@
 package ru.itmo.java;
 
-import java.util.Map;
 
 public class HashTable {
 
+    private static class Entry {
+        private Object value;
+        private Object key;
+        private boolean deleted;
+
+        private Entry(Object newValue, Object newKey, boolean newDeleted) {
+            value = newValue;
+            key = newKey;
+            deleted = newDeleted;
+        }
+    }
+
+    private Entry[] table;
+    private int size;
+    private int elementsQuantity;
+    private int realElementsQuantity;
+    private double loadFactor;
+    private int threshold;
+
+    private int powTwo(int size) {
+        int tmp = 1;
+        while (tmp < size) {
+            tmp *= 2;
+        }
+        return tmp;
+    }
+
+    public HashTable(int newSize) {
+      this(newSize, 0.5);
+    }
+
+    public HashTable(int newSize, double newLoadFactor) {
+        table = new Entry[powTwo(newSize)];
+        elementsQuantity = 0;
+        realElementsQuantity = 0;
+        size = newSize;
+        loadFactor = newLoadFactor;
+    }
+
     Object put(Object key, Object value) {
-        throw new UnsupportedOperationException();
+        int hashCode = getHash(key) % size;
+        int step = 1;
+
+        while (table[hashCode] != null && !table[hashCode].key.equals(key)) {
+            hashCode = (getHash(key) + step * step) % size;
+            step++;
+        }
+        if (table[hashCode] == null) {
+            table[hashCode] = new Entry(value, key, false);
+            elementsQuantity++;
+            realElementsQuantity++;
+            if (realElementsQuantity >= threshold) {
+                restructuring();
+            }
+            return null;
+        }
+        if (table[hashCode].deleted) {
+            table[hashCode].value = value;
+            table[hashCode].key = key;
+            table[hashCode].deleted = false;
+            elementsQuantity++;
+            realElementsQuantity++;
+            if (realElementsQuantity >= threshold) {
+                restructuring();
+            }
+            return null;
+        } else {
+
+            Object oldValue = table[hashCode].value;
+            table[hashCode].value = value;
+            return oldValue;
+        }
     }
 
     Object get(Object key) {
-        throw new UnsupportedOperationException();
+        int hashCode = getHash(key) % size;
+        int step = 1;
+        while (table[hashCode] != null && !table[hashCode].key.equals(key)) {
+            hashCode = (getHash(key) + step * step) % size;
+            step++;
+        }
+        if (table[hashCode] == null || table[hashCode].deleted) {
+            return null;
+        } else {
+            return table[hashCode].value;
+        }
     }
 
     Object remove(Object key) {
-        throw new UnsupportedOperationException();
+        int hashCode = getHash(key) % size;
+        int step = 1;
+        while (table[hashCode] != null && !table[hashCode].key.equals(key)) {
+            hashCode = (getHash(key) + step * step) % size;
+            step++;
+        }
+        if (table[hashCode] == null || table[hashCode].deleted) {
+            return null;
+        } else {
+            table[hashCode].deleted = true;
+            elementsQuantity--;
+            return table[hashCode].value;
+        }
     }
 
     int size() {
-        throw new UnsupportedOperationException();
+        return elementsQuantity;
     }
 
+    private void restructuring() {
+        Entry[] copyTable = table.clone();
+        Entry[] newTable = new Entry[size * 2];
+        int oldSize = size;
+        size = size * 2;
+        threshold = (int) (loadFactor * size);
+        table = newTable;
+        elementsQuantity = 0;
+        realElementsQuantity = 0;
+        for (int i = 0; i < oldSize; i++) {
+            if (copyTable[i] != null && !copyTable[i].deleted) {
+                put(copyTable[i].key, copyTable[i].value);
+            }
+        }
+    }
+
+    private int getHash(Object key) {
+        return Math.abs(key.hashCode());
+    }
 }
